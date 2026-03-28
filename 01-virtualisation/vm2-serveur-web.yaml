@@ -6,7 +6,6 @@ metadata:
   labels:
     app: serveur-web
 spec:
-  running: true
   template:
     metadata:
       labels:
