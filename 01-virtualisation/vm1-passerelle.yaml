@@ -6,7 +6,6 @@ metadata:
   labels:
     app: passerelle
 spec:
-  running: true
   template:
     metadata:
       labels:
