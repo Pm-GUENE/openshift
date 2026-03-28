@@ -1,0 +1,19 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: isoler-mysql
+  namespace: pmguene-dev
+spec:
+  podSelector:
+    matchLabels:
+      app: serveur-bd
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: serveur-web
+      ports:
+        - protocol: TCP
+          port: 3306

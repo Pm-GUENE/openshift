@@ -1,0 +1,55 @@
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  name: vm2-serveur-web
+  namespace: pmguene-dev
+  labels:
+    app: serveur-web
+spec:
+  running: true
+  template:
+    metadata:
+      labels:
+        app: serveur-web
+    spec:
+      domain:
+        cpu:
+          cores: 1
+        devices:
+          disks:
+            - disk:
+                bus: virtio
+              name: rootdisk
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+          interfaces:
+            - name: default
+              masquerade: {}
+        resources:
+          requests:
+            memory: 2Gi
+      networks:
+        - name: default
+          pod: {}
+      volumes:
+        - name: rootdisk
+          containerDisk:
+            image: quay.io/containerdisks/fedora:latest
+        - name: cloudinitdisk
+          cloudInitNoCloud:
+            userData: |
+              #cloud-config
+              hostname: vm2-serveur-web
+              user: fedora
+              password: fedora
+              chpasswd:
+                expire: false
+              ssh_pwauth: true
+              runcmd:
+                - dnf install -y nginx nodejs npm curl
+                - setsebool -P httpd_can_network_connect 1
+                - mkdir -p /home/fedora/app
+                - curl -sL https://raw.githubusercontent.com/Pm-GUENE/openshift/main/02-services/setup-web.sh -o /home/fedora/setup-web.sh
+                - chmod +x /home/fedora/setup-web.sh
+                - bash /home/fedora/setup-web.sh

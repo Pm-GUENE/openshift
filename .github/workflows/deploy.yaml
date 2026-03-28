@@ -1,0 +1,100 @@
+name: Deploy Infrastructure OpenShift
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  NAMESPACE: pmguene-dev
+
+jobs:
+  validate:
+    name: Valider les fichiers YAML
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout du code
+        uses: actions/checkout@v4
+
+      - name: Installer kubeval
+        run: |
+          wget https://github.com/instrumenta/kubeval/releases/latest/download/kubeval-linux-amd64.tar.gz
+          tar xf kubeval-linux-amd64.tar.gz
+          sudo mv kubeval /usr/local/bin/
+
+      - name: Valider les YAML Kubernetes
+        run: |
+          echo "=== Validation des Services ==="
+          kubeval 02-services/service-dmz.yaml --strict || true
+          kubeval 02-services/service-lan.yaml --strict || true
+          kubeval 02-services/service-passerelle.yaml --strict || true
+
+          echo "=== Validation du Deployment MySQL ==="
+          kubeval 01-virtualisation/mysql-deployment.yaml --strict || true
+
+          echo "=== Validation des NetworkPolicies ==="
+          kubeval 03-reseau/networkpolicy-mysql.yaml --strict || true
+          kubeval 03-reseau/networkpolicy-web.yaml --strict || true
+
+      - name: Verifier la structure du projet
+        run: |
+          echo "=== Structure du projet ==="
+          find . -name "*.yaml" -o -name "*.yml" -o -name "*.js" -o -name "*.json" -o -name "*.sh" -o -name "*.conf" | sort
+
+          echo "=== Verification des fichiers requis ==="
+          FILES=(
+            "01-virtualisation/vm1-passerelle.yaml"
+            "01-virtualisation/vm2-serveur-web.yaml"
+            "01-virtualisation/mysql-deployment.yaml"
+            "02-services/service-dmz.yaml"
+            "02-services/service-lan.yaml"
+            "02-services/service-passerelle.yaml"
+            "02-services/app/server.js"
+            "02-services/app/package.json"
+            "02-services/nginx/reverse-proxy.conf"
+            "02-services/setup-web.sh"
+            "03-reseau/networkpolicy-mysql.yaml"
+            "03-reseau/networkpolicy-web.yaml"
+          )
+          for f in "${FILES[@]}"; do
+            if [ -f "$f" ]; then
+              echo "OK : $f"
+            else
+              echo "MANQUANT : $f"
+              exit 1
+            fi
+          done
+
+      - name: Verifier le script setup
+        run: |
+          echo "=== Verification setup-web.sh ==="
+          bash -n 02-services/setup-web.sh
+          echo "Syntaxe OK"
+
+  deploy-info:
+    name: Instructions de deploiement
+    runs-on: ubuntu-latest
+    needs: validate
+    steps:
+      - name: Checkout du code
+        uses: actions/checkout@v4
+
+      - name: Afficher les instructions
+        run: |
+          echo "============================================"
+          echo "  DEPLOIEMENT - Architecture 3-tiers"
+          echo "  Namespace: ${{ env.NAMESPACE }}"
+          echo "============================================"
+          echo ""
+          echo "Pour deployer sur OpenShift, executez :"
+          echo ""
+          echo "  1. oc apply -f 02-services/service-dmz.yaml"
+          echo "  2. oc apply -f 02-services/service-lan.yaml"
+          echo "  3. oc apply -f 02-services/service-passerelle.yaml"
+          echo "  4. oc apply -f 01-virtualisation/mysql-deployment.yaml"
+          echo "  5. oc apply -f 01-virtualisation/vm1-passerelle.yaml"
+          echo "  6. oc apply -f 01-virtualisation/vm2-serveur-web.yaml"
+          echo "  7. oc apply -f 03-reseau/networkpolicy-mysql.yaml"
+          echo "  8. oc apply -f 03-reseau/networkpolicy-web.yaml"
+          echo ""
+          echo "============================================"

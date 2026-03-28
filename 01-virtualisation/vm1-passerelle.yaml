@@ -1,0 +1,59 @@
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  name: vm1-passerelle
+  namespace: pmguene-dev
+  labels:
+    app: passerelle
+spec:
+  running: true
+  template:
+    metadata:
+      labels:
+        app: passerelle
+    spec:
+      domain:
+        cpu:
+          cores: 1
+        devices:
+          disks:
+            - disk:
+                bus: virtio
+              name: rootdisk
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+          interfaces:
+            - name: default
+              masquerade: {}
+        resources:
+          requests:
+            memory: 1Gi
+      networks:
+        - name: default
+          pod: {}
+      volumes:
+        - name: rootdisk
+          containerDisk:
+            image: quay.io/containerdisks/fedora:latest
+        - name: cloudinitdisk
+          cloudInitNoCloud:
+            userData: |
+              #cloud-config
+              hostname: vm1-passerelle
+              user: fedora
+              password: fedora
+              chpasswd:
+                expire: false
+              ssh_pwauth: true
+              runcmd:
+                - dnf install -y iptables-services
+                - systemctl enable iptables
+                - systemctl start iptables
+                - echo 'net.ipv4.ip_forward=1' >> /etc/sysctl.conf
+                - sysctl -p
+                - iptables -A FORWARD -s service-dmz.pmguene-dev.svc.cluster.local -j ACCEPT
+                - iptables -A FORWARD -s service-lan.pmguene-dev.svc.cluster.local -d service-dmz.pmguene-dev.svc.cluster.local -p tcp --dport 3306 -j ACCEPT
+                - iptables -A FORWARD -s service-dmz.pmguene-dev.svc.cluster.local -d service-lan.pmguene-dev.svc.cluster.local -p tcp --dport 3306 -j ACCEPT
+                - iptables -A FORWARD -j DROP
+                - service iptables save
