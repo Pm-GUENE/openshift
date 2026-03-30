@@ -65,42 +65,9 @@ Internet (NAT)
 ├── 03-reseau/
 │   ├── networkpolicy-mysql.yaml  # Isolation MySQL
 │   └── networkpolicy-web.yaml    # Protection serveur web
-├── .github/workflows/
-│   └── deploy.yaml               # CI/CD GitHub Actions
 └── README.md
 ```
 
-## Déploiement rapide
-
-### 1. Cloner le dépôt
-```bash
-git clone https://github.com/Pm-GUENE/openshift.git
-cd openshift
-```
-
-### 2. Déployer les services réseau
-```bash
-oc apply -f 02-services/service-dmz.yaml
-oc apply -f 02-services/service-lan.yaml
-oc apply -f 02-services/service-passerelle.yaml
-```
-
-### 3. Déployer MySQL
-```bash
-oc apply -f 01-virtualisation/mysql-deployment.yaml
-```
-
-### 4. Déployer les VMs
-```bash
-oc apply -f 01-virtualisation/vm1-passerelle.yaml
-oc apply -f 01-virtualisation/vm2-serveur-web.yaml
-```
-
-### 5. Appliquer les politiques réseau
-```bash
-oc apply -f 03-reseau/networkpolicy-mysql.yaml
-oc apply -f 03-reseau/networkpolicy-web.yaml
-```
 
 ## Validation
 ```bash
